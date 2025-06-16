@@ -11,6 +11,9 @@ from experience_system import ExperienceSystem
 from ui_manager import UIManager
 from morality_effects import MoralityEffects
 from bullet import Bullet
+from environment_system import EnvironmentSystem, EnvironmentType
+from environment_renderer import EnvironmentRenderer
+from wall import create_environment_walls, get_environment_spawn_position
 import math
 
 # Initialisation
@@ -23,52 +26,52 @@ WORLD_WIDTH = 2048   # Monde 2x plus grand
 WORLD_HEIGHT = 1536  # Monde 2x plus grand
 FPS = 60
 
+
 # Couleurs
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 
-def spawn_enemies(wave_number, world_width, world_height, walls, player):
-    """Génère des ennemis selon le numéro de vague avec boss"""
+def spawn_enemies(wave_number, world_width, world_height, walls, player, environment_system):
+    """Génère des ennemis selon le numéro de vague avec boss et adaptation environnement"""
     enemies = []
     
-    # === BOSS WAVES ===
-    # Boss apparaissent à des vagues spécifiques
-    if wave_number == 5:  # Premier boss à la vague 10
-        print("🔥 BOSS WAVE ! Un Sorcier du Chaos apparaît !")
-        x, y = PathfindingHelper.find_free_spawn_position(
-            world_width, world_height, 48, 48, walls, player, 400
-        )
-        enemies.append(ChaosSorcererBoss(x, y))
-        return enemies  # Vague de boss pure
+    # Récupérer les infos de l'environnement actuel
+    env_info = environment_system.get_environment_info()
+    movement_modifier = environment_system.get_movement_modifier()
     
-    elif wave_number == 15:  # Deuxième boss
+    print(f"🌍 Spawn vague {wave_number} dans {env_info['name']}")
+    
+    # === BOSS WAVES ===
+    if wave_number == 5:
+        print("🔥 BOSS WAVE ! Un Sorcier du Chaos apparaît !")
+        x, y = get_environment_spawn_position(world_width, world_height, 48, 48, walls, avoid_center=True)
+        enemies.append(ChaosSorcererBoss(x, y))
+        return enemies
+    
+    elif wave_number == 15:
         print("⚡ BOSS WAVE ! Un Seigneur Inquisiteur vous défie !")
-        x, y = PathfindingHelper.find_free_spawn_position(
-            world_width, world_height, 45, 45, walls, player, 400
-        )
+        x, y = get_environment_spawn_position(world_width, world_height, 45, 45, walls, avoid_center=True)
         enemies.append(InquisitorLordBoss(x, y))
         return enemies
     
-    elif wave_number == 20:  # Boss final
+    elif wave_number == 20:
         print("💀 BOSS FINAL ! Un Prince Daemon émerge du Warp !")
-        x, y = PathfindingHelper.find_free_spawn_position(
-            world_width, world_height, 64, 64, walls, player, 500
-        )
+        x, y = get_environment_spawn_position(world_width, world_height, 64, 64, walls, avoid_center=True)
         enemies.append(DaemonPrinceBoss(x, y))
         return enemies
     
-    elif wave_number > 20:  # Après le boss final, boss aléatoires + ennemis
-        boss_chance = min(0.3, (wave_number - 20) * 0.1)  # 30% max de chance
+    elif wave_number > 20:
+        boss_chance = min(0.3, (wave_number - 20) * 0.1)
         if random.random() < boss_chance:
             boss_type = random.choice([ChaosSorcererBoss, InquisitorLordBoss])
             print(f"🎯 BOSS SURPRISE ! {boss_type.__name__} apparaît !")
-            x, y = PathfindingHelper.find_free_spawn_position(
-                world_width, world_height, 48, 48, walls, player, 350
-            )
+            x, y = get_environment_spawn_position(world_width, world_height, 48, 48, walls, avoid_center=True)
             enemies.append(boss_type(x, y))
     
-    # === ENNEMIS NORMAUX ===
-    # Progression normale avec difficultés croissantes
+    # === ADAPTATION SELON L'ENVIRONNEMENT ===
+    env_type = environment_system.current_environment
+    
+    # Nombre de base d'ennemis
     basic_count = min(3 + wave_number, 8)
     shooter_count = min(wave_number // 2, 4)
     fast_count = min(wave_number // 3, 3)
@@ -76,29 +79,60 @@ def spawn_enemies(wave_number, world_width, world_height, walls, player):
     marine_count = min(max(0, wave_number - 4), 3)
     daemon_count = min(max(0, wave_number - 6), 3)
     
+    # Modifications selon l'environnement
+    if env_type == EnvironmentType.SHIP:
+        # Vaisseau : Plus de Marines Renégats, moins de Démons
+        marine_count += 2
+        daemon_count = max(0, daemon_count - 1)
+        
+    elif env_type == EnvironmentType.TEMPLE:
+        # Temple : Plus de Cultistes, équilibre foi/corruption
+        cultist_count += 2
+        
+    elif env_type == EnvironmentType.FORGE:
+        # Forge : Ennemis plus résistants mais moins nombreux
+        basic_count = int(basic_count * 0.8)
+        marine_count += 1
+        
+    elif env_type == EnvironmentType.CHAOS:
+        # Chaos : Plus de Démons et Cultistes
+        daemon_count += 2
+        cultist_count += 2
+        basic_count = int(basic_count * 0.7)  # Moins d'ennemis normaux
+        
+    elif env_type == EnvironmentType.DEATH_WORLD:
+        # Monde Mort : Plus d'ennemis rapides et dangereux
+        fast_count += 2
+        basic_count += 1
+    
     # Après vague 10, plus d'ennemis difficiles
     if wave_number > 10:
         cultist_count += 1
         marine_count += 1
         daemon_count += 1
     
-    # Spawn normal
+    # Spawn des ennemis avec adaptation environnementale
     enemy_types = [
-        (BasicEnemy, basic_count, 24, 24, 150),
-        (ShooterEnemy, shooter_count, 20, 20, 200),
-        (FastEnemy, fast_count, 16, 16, 180),
-        (CultistEnemy, cultist_count, 22, 22, 200),
-        (RenegadeMarineEnemy, marine_count, 30, 30, 250),
-        (DaemonEnemy, daemon_count, 20, 20, 300)
+        (BasicEnemy, basic_count, 24, 24),
+        (ShooterEnemy, shooter_count, 20, 20),
+        (FastEnemy, fast_count, 16, 16),
+        (CultistEnemy, cultist_count, 22, 22),
+        (RenegadeMarineEnemy, marine_count, 30, 30),
+        (DaemonEnemy, daemon_count, 20, 20)
     ]
     
-    for enemy_class, count, width, height, min_distance in enemy_types:
+    for enemy_class, count, width, height in enemy_types:
         for _ in range(count):
-            x, y = PathfindingHelper.find_free_spawn_position(
-                world_width, world_height, width, height, walls, player, min_distance
-            )
-            enemies.append(enemy_class(x, y))
+            x, y = get_environment_spawn_position(world_width, world_height, width, height, walls, avoid_center=True)
+            enemy = enemy_class(x, y)
+            
+            # Appliquer les modificateurs d'environnement
+            if hasattr(enemy, 'speed'):
+                enemy.speed *= movement_modifier
+            
+            enemies.append(enemy)
     
+    print(f"   {len(enemies)} ennemis générés (Modificateur vitesse: {movement_modifier:.1f}x)")
     return enemies
 
 def main():
@@ -107,21 +141,7 @@ def main():
     pygame.display.set_caption("Roguelike WH40K - Prototype avec Boss")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
-    
-    # Créer le joueur au centre du monde
-    player = Player(WORLD_WIDTH // 2, WORLD_HEIGHT // 2)
-    
-    # Créer la caméra et la centrer immédiatement sur le joueur
-    camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT)
-    camera.x = player.x + player.width // 2 - SCREEN_WIDTH // 2
-    camera.y = player.y + player.height // 2 - SCREEN_HEIGHT // 2
-    camera.target_x = camera.x
-    camera.target_y = camera.y
-    
-    # Créer les murs
-    walls = create_border_walls(WORLD_WIDTH, WORLD_HEIGHT)
-    walls.extend(create_interior_walls(WORLD_WIDTH, WORLD_HEIGHT))
-    
+ 
     # Listes de jeu
     player_bullets = []
     enemy_bullets = []
@@ -147,9 +167,31 @@ def main():
     enemies_killed = 0
     wave_clear = False
     
-    # Spawn première vague
-    enemies = spawn_enemies(wave_number, WORLD_WIDTH, WORLD_HEIGHT, walls, player)
+
+        # Système d'environnements
+    environment_system = EnvironmentSystem()
+    environment_renderer = EnvironmentRenderer(SCREEN_WIDTH, SCREEN_HEIGHT)
     
+    # Générer l'environnement initial
+    walls = create_environment_walls(WORLD_WIDTH, WORLD_HEIGHT, 1, morality_system, environment_system)
+
+
+    # Position de spawn du joueur selon l'environnement
+    player_spawn_x, player_spawn_y = get_environment_spawn_position(
+        WORLD_WIDTH, WORLD_HEIGHT, 32, 32, walls, avoid_center=False
+    )
+    player = Player(player_spawn_x, player_spawn_y)
+    
+    # Créer la caméra et la centrer immédiatement sur le joueur
+    camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT)
+    camera.x = player.x + player.width // 2 - SCREEN_WIDTH // 2
+    camera.y = player.y + player.height // 2 - SCREEN_HEIGHT // 2
+    camera.target_x = camera.x
+    camera.target_y = camera.y
+    
+    # Spawn première vague
+    enemies = spawn_enemies(wave_number, WORLD_WIDTH, WORLD_HEIGHT, walls, player, environment_system)
+
     # Game Over
     game_over = False
     
@@ -174,22 +216,31 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_r and game_over:
                     # Restart du jeu
-                    player = Player(WORLD_WIDTH // 2, WORLD_HEIGHT // 2)
+                    walls = create_environment_walls(WORLD_WIDTH, WORLD_HEIGHT, 1, morality_system, environment_system)
+                    player_spawn_x, player_spawn_y = get_environment_spawn_position(
+                        WORLD_WIDTH, WORLD_HEIGHT, 32, 32, walls, avoid_center=False
+                    )
+                    player = Player(player_spawn_x, player_spawn_y)
+
                     camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT)
-                    # Centrer immédiatement la caméra
                     camera.x = player.x + player.width // 2 - SCREEN_WIDTH // 2
                     camera.y = player.y + player.height // 2 - SCREEN_HEIGHT // 2
                     camera.target_x = camera.x
                     camera.target_y = camera.y
+
                     player_bullets = []
                     enemy_bullets = []
-                    enemies = spawn_enemies(1, WORLD_WIDTH, WORLD_HEIGHT, walls, player)
+                    enemies = spawn_enemies(1, WORLD_WIDTH, WORLD_HEIGHT, walls, player, environment_system)
                     wave_number = 1
                     enemies_killed = 0
                     game_over = False
                     item_manager = ItemManager()
                     morality_system = MoralitySystem()
                     exp_system = ExperienceSystem()
+
+                    # Réinitialiser le système d'environnement
+                    environment_system = EnvironmentSystem()
+                    environment_renderer = EnvironmentRenderer(SCREEN_WIDTH, SCREEN_HEIGHT)
         
         # Vérifier si le jeu doit être en pause
         game_paused = ui_manager.should_pause_game(exp_system)
@@ -209,6 +260,9 @@ def main():
             
             # Mise à jour du système d'expérience
             exp_system.update()
+
+            # Mise à jour du renderer d'environnement
+            environment_renderer.update(environment_system)
             
             # Générer choix de level-up si nécessaire
             if exp_system.is_leveling_up and not exp_system.level_up_choices:
@@ -592,15 +646,29 @@ def main():
             # Vérifier si vague terminée
             if len(enemies) == 0:
                 # Messages spéciaux après boss
-                if wave_number == 10:
-                    print("✅ Sorcier du Chaos vaincu ! La vague 11 vous attend...")
+                if wave_number == 5:
+                    print("✅ Sorcier du Chaos vaincu ! La vague 6 vous attend...")
                 elif wave_number == 15:
                     print("✅ Seigneur Inquisiteur vaincu ! Préparez-vous pour le boss final...")
                 elif wave_number == 20:
                     print("🎉 PRINCE DAEMON VAINCU ! VOUS AVEZ GAGNÉ ! Mais les vagues continuent...")
                 
                 wave_number += 1
-                enemies = spawn_enemies(wave_number, WORLD_WIDTH, WORLD_HEIGHT, walls, player)
+                
+                # Générer un nouvel environnement pour la nouvelle vague
+                walls = create_environment_walls(WORLD_WIDTH, WORLD_HEIGHT, wave_number, morality_system, environment_system)
+                
+                # Repositionner le joueur si nécessaire (éviter qu'il soit dans un mur)
+                if not get_environment_spawn_position:  # Vérification de sécurité
+                    from pathfinding import PathfindingHelper
+                    if not PathfindingHelper.is_position_free(player.x, player.y, player.width, player.height, walls):
+                        # Repositionner le joueur
+                        new_x, new_y = get_environment_spawn_position(WORLD_WIDTH, WORLD_HEIGHT, 
+                                                                    player.width, player.height, walls, avoid_center=False)
+                        player.x, player.y = new_x, new_y
+                        player.rect.x, player.rect.y = player.x, player.y
+                
+                enemies = spawn_enemies(wave_number, WORLD_WIDTH, WORLD_HEIGHT, walls, player, environment_system)
                 wave_clear = True
         
         # Mise à jour de l'UI (toujours, même en pause)
@@ -608,51 +676,44 @@ def main():
         
         # Rendu
         screen.fill(BLACK)
-        
+
         if not game_over:
-            # Dessiner les murs (seulement ceux visibles)
-            for wall in walls:
-                if camera.is_visible(wall):
-                    wall_screen_rect = camera.apply(wall)
-                    pygame.draw.rect(screen, (128, 128, 128), wall_screen_rect)
+            # Dessiner le fond d'environnement
+            environment_renderer.draw_background(screen, camera, environment_system)
+            
+            # Dessiner les murs avec le style d'environnement
+            environment_renderer.draw_walls(screen, walls, camera, environment_system)
             
             # Dessiner le joueur
             player_screen_rect = camera.apply(player)
-            
-            # Utiliser la méthode draw du joueur mais avec les coordonnées écran
             old_x, old_y = player.x, player.y
             player.x, player.y = player_screen_rect.x, player_screen_rect.y
             player.draw(screen)
-            player.x, player.y = old_x, old_y  # Restaurer les vraies coordonnées
+            player.x, player.y = old_x, old_y
             
             # Dessiner les ennemis (seulement ceux visibles)
             for enemy in enemies:
                 if camera.is_visible(enemy):
                     enemy_screen_rect = camera.apply(enemy)
-                    
-                    # Utiliser la méthode draw de l'ennemi mais avec coordonnées écran
                     old_x, old_y = enemy.x, enemy.y
                     enemy.x, enemy.y = enemy_screen_rect.x, enemy_screen_rect.y
                     enemy.draw(screen)
-                    enemy.x, enemy.y = old_x, old_y  # Restaurer
+                    enemy.x, enemy.y = old_x, old_y
             
             # Dessiner les objets au sol (seulement ceux visibles)
             for item in item_manager.items_on_ground:
                 if camera.is_visible(item):
                     item_screen_pos = camera.apply_pos(item.x, item.y)
-                    
-                    # Utiliser les coordonnées d'écran temporairement
                     old_x, old_y = item.x, item.y
                     item.x, item.y = item_screen_pos[0], item_screen_pos[1]
                     item.draw(screen)
-                    item.x, item.y = old_x, old_y  # Restaurer
+                    item.x, item.y = old_x, old_y
             
             # Dessiner les projectiles (seulement ceux visibles)
             for bullet in player_bullets:
                 bullet_screen_pos = camera.apply_pos(bullet.x, bullet.y)
                 if (0 <= bullet_screen_pos[0] <= SCREEN_WIDTH and 
                     0 <= bullet_screen_pos[1] <= SCREEN_HEIGHT):
-                    # Utiliser la méthode draw du bullet
                     old_x, old_y = bullet.x, bullet.y
                     bullet.x, bullet.y = bullet_screen_pos[0], bullet_screen_pos[1]
                     bullet.draw(screen)
@@ -662,7 +723,6 @@ def main():
                 bullet_screen_pos = camera.apply_pos(bullet.x, bullet.y)
                 if (0 <= bullet_screen_pos[0] <= SCREEN_WIDTH and 
                     0 <= bullet_screen_pos[1] <= SCREEN_HEIGHT):
-                    # Utiliser la méthode draw du bullet
                     old_x, old_y = bullet.x, bullet.y
                     bullet.x, bullet.y = bullet_screen_pos[0], bullet_screen_pos[1]
                     bullet.draw(screen)
@@ -674,12 +734,13 @@ def main():
             # HUD minimal pendant le jeu
             ui_manager.draw_minimal_hud(screen, player, morality_system, exp_system)
             
-            # Instructions mises à jour
+            # Instructions mises à jour avec info environnement
+            env_info = environment_system.get_environment_info()
             instructions = [
                 "WASD/Flèches: Déplacement | Espace/Clic: Tir automatique",
-                "🔥 BOSS: Vague 10, 15, 20 | Esquivez les attaques de zone !",
-                "Violet: Cultiste  Bronze: Marine  Noir: Démon",
-                "Or: Sorcier  Blanc: Inquisiteur  Pourpre: Prince Daemon"
+                f"🌍 Environnement: {env_info['name']} | Vague {wave_number}",
+                "🔥 BOSS: Vague 5, 15, 20 | Esquivez les attaques de zone !",
+                "Violet: Cultiste  Bronze: Marine  Noir: Démon"
             ]
             for i, instruction in enumerate(instructions):
                 text = pygame.font.Font(None, 20).render(instruction, True, WHITE)
