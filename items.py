@@ -341,6 +341,7 @@ class ItemManager:
             }
         }
     
+
     def spawn_item(self, x, y, morality_system=None):
         """Fait apparaître un objet aléatoire selon l'état moral"""
         available_items = list(self.item_definitions.keys())

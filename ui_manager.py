@@ -428,7 +428,7 @@ class UIManager:
     def draw_level_up_notification(self, screen):
         """Dessine une notification de level-up stylée"""
         # Animation de flash pour le level-up plus subtile
-        flash_intensity = abs(math.sin(self.animation_time * 0.2)) * 30  # Réduit de 100 à 30
+        flash_intensity = abs(math.sin(self.animation_time * 0.1)) * 15  # Réduit vitesse et intensité
         flash_surface = pygame.Surface((1024, 768))
         flash_surface.set_alpha(flash_intensity)
         flash_surface.fill((255, 215, 0))
