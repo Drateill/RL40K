@@ -417,7 +417,6 @@ class Trap(InteractiveElement):
         # Dégâts et effets
         self.damage = {"spikes": 20, "gas": 10, "electric": 15, "warp": 25}[trap_type]
         self.special_effect = {"spikes": None, "gas": "poison", "electric": "stun", "warp": "teleport"}[trap_type]
-
     
     def check_trigger(self, player) -> bool:
         """Vérifie si le piège doit se déclencher"""
@@ -666,7 +665,6 @@ class InteractiveElementManager:
     def add_element(self, element: InteractiveElement):
         """Ajoute un élément interactif"""
         self.elements.append(element)
-
     
     def spawn_elements_for_environment(self, walls: List, environment_type, 
                                      world_width: int, world_height: int):

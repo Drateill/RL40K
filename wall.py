@@ -97,7 +97,20 @@ def get_environment_spawn_position(world_width: int, world_height: int,
                                  entity_width: int, entity_height: int,
                                  walls: List[Wall], avoid_center: bool = True) -> tuple:
     """
+<<<<<<< HEAD
     ✅ VERSION CORRIGÉE : Trouve une position de spawn GARANTIE
+=======
+    Trouve une position de spawn appropriée selon l'environnement
+    
+    Args:
+        world_width, world_height: Dimensions du monde
+        entity_width, entity_height: Taille de l'entité à placer
+        walls: Liste des murs pour éviter les collisions
+        avoid_center: Si True, évite le centre (pour les ennemis)
+    
+    Returns:
+        tuple: (x, y) position de spawn
+>>>>>>> 4317ae52ef93e85266aa22fe39a3090977a953dc
     """
     from pathfinding import PathfindingHelper
     
