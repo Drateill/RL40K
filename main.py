@@ -13,6 +13,7 @@ from experience_system import ExperienceSystem
 from ui_manager import UIManager
 from morality_effects import MoralityEffects
 from bullet import Bullet
+from sound_system import create_sound_manager
 
 # Initialisation
 pygame.init()
@@ -527,9 +528,13 @@ def spawn_enemies_optimized(wave_number, level_manager, player):
 def main():
     # Initialiser Pygame
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    pygame.display.set_caption("Roguelike WH40K - Génération de Monde Dynamique")
+    pygame.display.set_caption("Roguelike WH40K - Avec Audio")
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 36)
+    
+    # === INITIALISER LE SYSTÈME AUDIO ===
+    sound_manager = create_sound_manager()
+    print(f"🔊 Audio {'activé' if sound_manager.is_audio_enabled() else 'désactivé'}")
     
     # Créer le joueur au centre du monde
     player = Player(WORLD_WIDTH // 2, WORLD_HEIGHT // 2)
@@ -565,9 +570,14 @@ def main():
     
     # Spawn première vague
     enemies = spawn_enemies_optimized(wave_number, level_manager, player)
+    sound_manager.on_wave_start(wave_number)
     
     # Game Over
     game_over = False
+    
+    # Variables pour le système audio
+    last_morality_faith = morality_system.faith
+    last_morality_corruption = morality_system.corruption
     
     # Boucle principale
     running = True
@@ -583,6 +593,21 @@ def main():
                     chosen_item = exp_system.level_up_choices[exp_system.selected_choice]
                     item_manager.apply_item_directly(player, chosen_item, morality_system)
                     exp_system.level_up_choices = []
+                    sound_manager.on_item_pickup()  # Son de ramassage d'objet
+                continue
+            
+            # UI audio
+            if ui_manager.handle_input(event):
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        # Son de pause
+                        sound_manager.on_menu_select()
+                    elif event.key in [pygame.K_UP, pygame.K_DOWN, pygame.K_w, pygame.K_s]:
+                        # Son de navigation
+                        sound_manager.on_menu_navigate()
+                    elif event.key in [pygame.K_RETURN, pygame.K_SPACE]:
+                        # Son de sélection
+                        sound_manager.on_menu_select()
                 continue
             
             if event.type == pygame.KEYDOWN:
@@ -605,6 +630,10 @@ def main():
                     level_manager = LevelManager()
                     walls = level_manager.generate_level(wave_number, morality_system)
                     enemies = spawn_enemies_optimized(wave_number, level_manager, player)
+                    sound_manager.on_wave_start(wave_number)
+                    # Reset morality tracking
+                    last_morality_faith = morality_system.faith
+                    last_morality_corruption = morality_system.corruption
         
         # Vérifier si le jeu doit être en pause
         game_paused = ui_manager.should_pause_game(exp_system)
@@ -619,8 +648,19 @@ def main():
             # Mise à jour des effets environnementaux
             environment_effects.update(level_manager.current_environment)
             
-            # Mise à jour du système de moralité
+            # Mise à jour du système de moralité et détection des changements pour l'audio
+            old_faith = morality_system.faith
+            old_corruption = morality_system.corruption
             morality_system.update()
+            
+            # Sons de changement de moralité
+            faith_change = morality_system.faith - old_faith
+            corruption_change = morality_system.corruption - old_corruption
+            
+            if abs(faith_change) > 0.5:
+                sound_manager.on_morality_change("faith", abs(faith_change))
+            if abs(corruption_change) > 0.5:
+                sound_manager.on_morality_change("corruption", abs(corruption_change))
             
             # Appliquer les effets de moralité au joueur
             morality_effects.apply_morality_effects(player, morality_system)
@@ -631,6 +671,7 @@ def main():
             # Générer choix de level-up si nécessaire
             if exp_system.is_leveling_up and not exp_system.level_up_choices:
                 exp_system.generate_level_up_choices(morality_system, item_manager)
+                sound_manager.on_level_up()  # Son de level up
             
             # Tir automatique du joueur
             keys = pygame.key.get_pressed()
@@ -639,8 +680,11 @@ def main():
             if keys[pygame.K_SPACE] or mouse_buttons[0]:
                 mouse_pos = pygame.mouse.get_pos()
                 world_mouse_pos = camera.screen_to_world(mouse_pos[0], mouse_pos[1])
-                bullets = player.try_shoot(world_mouse_pos)
-                player_bullets.extend(bullets)
+                bullets = player.try_shoot(world_mouse_pos, morality_system)
+                if bullets:
+                    player_bullets.extend(bullets)
+                    # Son de tir du joueur
+                    sound_manager.on_player_shoot((player.x, player.y), morality_system)
             
             # Mise à jour des ennemis et gestion des boss
             for enemy in enemies:
@@ -651,6 +695,8 @@ def main():
                     bullet = enemy.try_shoot(player)
                     if bullet:
                         enemy_bullets.append(bullet)
+                        # Son de tir d'ennemi
+                        sound_manager.on_enemy_shoot((enemy.x, enemy.y), (player.x, player.y))
                 
                 elif isinstance(enemy, CultistEnemy):
                     if enemy.try_summon():
@@ -678,11 +724,13 @@ def main():
                         )
                         psychic_bullet.color = (150, 0, 150)
                         enemy_bullets.append(psychic_bullet)
+                        sound_manager.on_enemy_shoot((enemy.x, enemy.y), (player.x, player.y))
                 
                 # === GESTION DES BOSS ===
                 elif isinstance(enemy, ChaosSorcererBoss):
                     if random.random() < 0.02:
-                        enemy.try_teleport()
+                        if enemy.try_teleport():
+                            sound_manager.on_boss_ability("daemon_teleport", (enemy.x, enemy.y), (player.x, player.y))
                     
                     if enemy.try_summon_daemon():
                         for _ in range(2):
@@ -713,7 +761,11 @@ def main():
                                 game_over = True
                             else:
                                 morality_system.process_damage_taken(area_damage)
+                                sound_manager.on_player_damage()
                             print("💥 DÉFLAGRATION CHAOTIQUE !")
+                        
+                        # Son d'explosion de zone
+                        sound_manager.on_boss_ability("sorcerer_area", (sorcerer_center_x, sorcerer_center_y), (player.x, player.y))
                     
                     if enemy.try_projectile_barrage(player):
                         for i in range(8):
@@ -734,7 +786,8 @@ def main():
                 
                 elif isinstance(enemy, InquisitorLordBoss):
                     if random.random() < 0.015:
-                        enemy.try_purification()
+                        if enemy.try_purification():
+                            sound_manager.on_boss_ability("inquisitor_purification", (enemy.x, enemy.y), (player.x, player.y))
                     
                     if enemy.handle_purification():
                         purif_radius = 150
@@ -754,6 +807,7 @@ def main():
                                 game_over = True
                             else:
                                 morality_system.process_damage_taken(purif_damage)
+                                sound_manager.on_player_damage()
                             print("⚡ PURIFICATION IMPÉRIALE !")
                     
                     if enemy.try_blessed_shots(player):
@@ -778,16 +832,19 @@ def main():
                             )
                             blessed_bullet.color = (255, 255, 150)
                             enemy_bullets.append(blessed_bullet)
+                        sound_manager.on_enemy_shoot((enemy.x, enemy.y), (player.x, player.y))
                     
                     if enemy.health < enemy.max_health * 0.4 and random.random() < 0.01:
                         enemy.try_activate_shield()
                 
                 elif isinstance(enemy, DaemonPrinceBoss):
                     if random.random() < 0.025:
-                        enemy.try_chaos_teleport()
+                        if enemy.try_chaos_teleport():
+                            sound_manager.on_boss_ability("daemon_teleport", (enemy.x, enemy.y), (player.x, player.y))
                     
                     if random.random() < 0.008:
-                        enemy.try_warp_storm()
+                        if enemy.try_warp_storm():
+                            sound_manager.on_boss_ability("daemon_warp_storm", (enemy.x, enemy.y), (player.x, player.y))
                     
                     if enemy.handle_warp_storm():
                         storm_radius = 200
@@ -807,6 +864,7 @@ def main():
                                 game_over = True
                             else:
                                 morality_system.process_damage_taken(storm_damage)
+                                sound_manager.on_player_damage()
                             print("🌩️ TEMPÊTE WARP DÉVASTATRICE !")
                     
                     if enemy.try_corruption_wave():
@@ -825,6 +883,7 @@ def main():
                             corruption_bullet.color = (150, 0, 150)
                             enemy_bullets.append(corruption_bullet)
                         print("🌀 VAGUE DE CORRUPTION !")
+                        sound_manager.on_enemy_shoot((enemy.x, enemy.y), (player.x, player.y))
                     
                     if enemy.try_mass_summon():
                         summon_count = 3 if enemy.chaos_form == 1 else 5
@@ -851,6 +910,9 @@ def main():
             # Mise à jour des objets
             item_manager.update()
             item_manager.check_pickup(player, morality_system)
+            
+            # Mise à jour du système audio
+            sound_manager.update()
 
             # ===== GESTION DES COLLISIONS =====
             enemies_to_remove = []
@@ -877,22 +939,28 @@ def main():
                         # Marquer cet ennemi comme touché par ce projectile
                         bullet.hit_enemies.add(id(enemy))
                         
+                        # Son d'impact
+                        sound_manager.on_bullet_hit((enemy.x, enemy.y), (player.x, player.y))
+                        
                         if enemy.take_damage(bullet.damage):
                             # Gestion des événements spéciaux à la mort des boss
                             if isinstance(enemy, ChaosSorcererBoss):
                                 print("🔥 Le Sorcier du Chaos est vaincu ! +100 XP")
                                 exp_system.add_experience(100)
                                 morality_system.add_faith(15, "Destruction d'un Sorcier du Chaos")
+                                sound_manager.on_boss_death()
                             
                             elif isinstance(enemy, InquisitorLordBoss):
                                 print("⚡ Le Seigneur Inquisiteur est vaincu ! +120 XP") 
                                 exp_system.add_experience(120)
                                 morality_system.add_corruption(10, "Meurtre d'un Inquisiteur")
+                                sound_manager.on_boss_death()
                             
                             elif isinstance(enemy, DaemonPrinceBoss):
                                 print("💀 LE PRINCE DAEMON EST VAINCU ! VICTOIRE ÉPIQUE ! +200 XP")
                                 exp_system.add_experience(200)
                                 morality_system.add_faith(25, "Bannissement d'un Prince Daemon")
+                                sound_manager.on_boss_death()
                             
                             else:
                                 morality_system.process_kill(type(enemy).__name__)
@@ -906,6 +974,9 @@ def main():
                                 }
                                 exp_reward = exp_rewards.get(type(enemy).__name__, 10)
                                 exp_system.add_experience(exp_reward)
+                                
+                                # Son de mort d'ennemi
+                                sound_manager.on_enemy_death((enemy.x, enemy.y), (player.x, player.y), type(enemy).__name__)
                             
                             # Pour tous les boss - nettoyer leurs invocations
                             if isinstance(enemy, (ChaosSorcererBoss, InquisitorLordBoss, DaemonPrinceBoss)):
@@ -950,6 +1021,7 @@ def main():
                         game_over = True
                     else:
                         morality_system.process_damage_taken(damage_taken)
+                        sound_manager.on_player_damage()
                     enemy_bullets.remove(bullet)
             
             # Collisions ennemis vs joueur (contact direct)
@@ -985,6 +1057,7 @@ def main():
                         game_over = True
                     else:
                         morality_system.process_damage_taken(contact_damage)
+                        sound_manager.on_player_damage()
             
             # Vérifier si vague terminée
             if len(enemies) == 0:
@@ -995,6 +1068,7 @@ def main():
                 elif wave_number == 20:
                     print("🎉 PRINCE DAEMON VAINCU ! VOUS AVEZ GAGNÉ ! Mais les vagues continuent...")
                 
+                sound_manager.on_wave_complete()
                 wave_number += 1
                 
                 # Régénérer le niveau pour certaines vagues importantes
@@ -1008,6 +1082,17 @@ def main():
                     walls = level_manager.generate_level(wave_number, morality_system)
                 
                 enemies = spawn_enemies_optimized(wave_number, level_manager, player)
+                
+                # Sons de boss spawn
+                if wave_number == 5:
+                    sound_manager.on_boss_spawn("chaos")
+                elif wave_number == 15:
+                    sound_manager.on_boss_spawn("imperial")
+                elif wave_number == 20:
+                    sound_manager.on_boss_spawn("daemon")
+                else:
+                    sound_manager.on_wave_start(wave_number)
+                
                 wave_clear = True
         
         # Mise à jour de l'UI
@@ -1095,12 +1180,13 @@ def main():
             env_text = env_font.render(env_info, True, WHITE)
             screen.blit(env_text, (10, SCREEN_HEIGHT - 140))
             
-            # Instructions et informations
+            # Instructions et informations (avec statut audio)
+            audio_status = "🔊 Audio" if sound_manager.is_audio_enabled() else "🔇 Silent"
             instructions = [
                 "WASD/Flèches: Déplacement | Espace/Clic: Tir automatique",
                 "🌍 Environnement adaptatif selon votre moralité",
                 "🔥 BOSS: Vague 5, 15, 20 | Arènes dédiées !",
-                f"Vague {wave_number} - {len(enemies)} ennemis - Env: {level_manager.current_environment}"
+                f"Vague {wave_number} - {len(enemies)} ennemis - {audio_status}"
             ]
             for i, instruction in enumerate(instructions):
                 text = pygame.font.Font(None, 18).render(instruction, True, WHITE)
