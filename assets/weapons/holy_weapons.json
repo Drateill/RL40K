@@ -1,0 +1,130 @@
+{
+  "bolter_consecrated": {
+    "name": "Bolter Consacré",
+    "description": "Béni par l'Empereur",
+    "type": "projectile",
+    "rarity": "rare",
+    "stats": {
+      "damage": 15,
+      "fire_rate": 10,
+      "projectile_speed": 10,
+      "accuracy": 0.98,
+      "reload_time": 0,
+      "ammo_capacity": -1,
+      "range": 800
+    },
+    "projectile": {
+      "size": 4,
+      "color": [
+        255,
+        255,
+        200
+      ],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 140
+    },
+    "effects": [
+      "holy_damage",
+      "demon_bane",
+      "faith_boost"
+    ],
+    "sounds": {
+      "fire": "blessed_shot.wav",
+      "reload": null,
+      "empty": null
+    },
+    "morality_requirements": {
+      "min_faith": 20,
+      "max_corruption": 10
+    },
+    "upgrades": [
+      "emperor_wrath"
+    ]
+  },
+  "emperor_wrath": {
+    "name": "Courroux de l'Empereur",
+    "description": "Colère divine incarnée",
+    "type": "energy",
+    "rarity": "legendary",
+    "stats": {
+      "damage": 35,
+      "fire_rate": 6,
+      "projectile_speed": 18,
+      "accuracy": 1.0,
+      "reload_time": 0,
+      "ammo_capacity": -1,
+      "range": 700
+    },
+    "projectile": {
+      "size": 8,
+      "color": [
+        255,
+        255,
+        255
+      ],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 200
+    },
+    "effects": [
+      "divine_wrath",
+      "explosive_holy",
+      "piercing_light",
+      "demon_bane"
+    ],
+    "sounds": {
+      "fire": "divine_wrath.wav",
+      "reload": null,
+      "empty": null
+    },
+    "morality_requirements": {
+      "min_faith": 80,
+      "max_corruption": 5
+    },
+    "upgrades": []
+  },
+  "purifier_flame": {
+    "name": "Flamme Purificatrice",
+    "description": "Feu sacré purifiant",
+    "type": "flame",
+    "rarity": "epic",
+    "stats": {
+      "damage": 20,
+      "fire_rate": 8,
+      "projectile_speed": 7,
+      "accuracy": 1.0,
+      "reload_time": 60,
+      "ammo_capacity": 15,
+      "range": 150
+    },
+    "projectile": {
+      "size": 10,
+      "color": [
+        255,
+        255,
+        150
+      ],
+      "sprite": null,
+      "trail": false,
+      "lifetime": 40
+    },
+    "effects": [
+      "purifying_flame",
+      "corruption_cleanse",
+      "area_blessing"
+    ],
+    "sounds": {
+      "fire": "holy_flame.wav",
+      "reload": "sacred_reload.wav",
+      "empty": "weapon_empty.wav"
+    },
+    "morality_requirements": {
+      "min_faith": 50,
+      "max_corruption": 15
+    },
+    "upgrades": [
+      "divine_inferno"
+    ]
+  }
+}

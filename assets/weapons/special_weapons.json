@@ -1,0 +1,156 @@
+{
+  "plasma_gun": {
+    "name": "Pistolet Plasma",
+    "description": "Arme à énergie plasma",
+    "type": "energy",
+    "rarity": "rare",
+    "stats": {
+      "damage": 25,
+      "fire_rate": 20,
+      "projectile_speed": 15,
+      "accuracy": 0.98,
+      "reload_time": 60,
+      "ammo_capacity": 8,
+      "range": 700
+    },
+    "projectile": {
+      "size": 5,
+      "color": [
+        0,
+        255,
+        255
+      ],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 100
+    },
+    "effects": [
+      "energy_damage",
+      "overcharge_risk"
+    ],
+    "sounds": {
+      "fire": "plasma_shot.wav",
+      "reload": "plasma_reload.wav",
+      "empty": "plasma_empty.wav"
+    },
+    "upgrades": [
+      "plasma_cannon"
+    ]
+  },
+  "melta_gun": {
+    "name": "Fusil à Fusion",
+    "description": "Arme thermique dévastatrice",
+    "type": "thermal",
+    "rarity": "rare",
+    "stats": {
+      "damage": 40,
+      "fire_rate": 30,
+      "projectile_speed": 8,
+      "accuracy": 0.85,
+      "reload_time": 45,
+      "ammo_capacity": 4,
+      "range": 200
+    },
+    "projectile": {
+      "size": 8,
+      "color": [
+        255,
+        100,
+        0
+      ],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 60
+    },
+    "effects": [
+      "thermal_damage",
+      "armor_melting",
+      "short_range"
+    ],
+    "sounds": {
+      "fire": "melta_shot.wav",
+      "reload": "melta_reload.wav",
+      "empty": "weapon_empty.wav"
+    },
+    "upgrades": [
+      "melta_cannon"
+    ]
+  },
+  "flamer": {
+    "name": "Lance-Flammes",
+    "description": "Arme incendiaire à courte portée",
+    "type": "flame",
+    "rarity": "rare",
+    "stats": {
+      "damage": 15,
+      "fire_rate": 5,
+      "projectile_speed": 6,
+      "accuracy": 1.0,
+      "reload_time": 90,
+      "ammo_capacity": 20,
+      "range": 150
+    },
+    "projectile": {
+      "size": 12,
+      "color": [
+        255,
+        150,
+        0
+      ],
+      "sprite": null,
+      "trail": false,
+      "lifetime": 30
+    },
+    "effects": [
+      "flame_stream",
+      "burning_damage",
+      "area_effect"
+    ],
+    "sounds": {
+      "fire": "flamer_shot.wav",
+      "reload": "flamer_reload.wav",
+      "empty": "weapon_empty.wav"
+    },
+    "upgrades": [
+      "heavy_flamer"
+    ]
+  },
+  "storm_bolter": {
+    "name": "Bolter d'Assaut",
+    "description": "Cadence de tir élevée",
+    "type": "projectile",
+    "rarity": "epic",
+    "stats": {
+      "damage": 8,
+      "fire_rate": 4,
+      "projectile_speed": 10,
+      "accuracy": 0.88,
+      "reload_time": 45,
+      "ammo_capacity": 40,
+      "range": 800
+    },
+    "projectile": {
+      "size": 3,
+      "color": [
+        255,
+        255,
+        200
+      ],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 120
+    },
+    "effects": [
+      "rapid_fire",
+      "suppression"
+    ],
+    "sounds": {
+      "fire": "storm_bolter.wav",
+      "reload": "bolter_reload.wav",
+      "empty": "weapon_empty.wav"
+    },
+    "upgrades": [
+      "hurricane_bolter"
+    ]
+  }
+}
