@@ -17,7 +17,8 @@ class SceneManager:
     def add_scene(self, name, scene):
         """Ajoute une nouvelle scène"""
         self.scenes[name] = scene
-        scene.scene_manager = self  # Référence retour
+        if hasattr(scene, 'scene_manager'):
+            scene.scene_manager = self  # Référence retour
         print(f"📝 Scène '{name}' ajoutée")
     
     def remove_scene(self, name):
@@ -35,11 +36,13 @@ class SceneManager:
         # Sauvegarder la scène précédente
         if self.active_scene:
             self.previous_scene = self.active_scene
-            self.active_scene.on_exit()
+            if hasattr(self.active_scene, 'on_exit'):
+                self.active_scene.on_exit()
         
         # Activer la nouvelle scène
         self.active_scene = self.scenes[name]
-        self.active_scene.on_enter()
+        if hasattr(self.active_scene, 'on_enter'):
+            self.active_scene.on_enter()
         
         print(f"🎬 Scène active: '{name}'")
         return True
@@ -52,12 +55,14 @@ class SceneManager:
         
         # Mettre la scène actuelle en pause
         if self.active_scene:
-            self.active_scene.on_pause()
+            if hasattr(self.active_scene, 'on_pause'):
+                self.active_scene.on_pause()
             self.scene_stack.append(self.active_scene)
         
         # Activer la nouvelle scène
         self.active_scene = self.scenes[name]
-        self.active_scene.on_enter()
+        if hasattr(self.active_scene, 'on_enter'):
+            self.active_scene.on_enter()
         
         print(f"📚 Scène '{name}' empilée")
         return True
@@ -69,15 +74,57 @@ class SceneManager:
             return False
         
         # Quitter la scène actuelle
-        if self.active_scene:
+        if self.active_scene and hasattr(self.active_scene, 'on_exit'):
             self.active_scene.on_exit()
         
         # Récupérer la scène précédente
         self.active_scene = self.scene_stack.pop()
-        self.active_scene.on_resume()
+        if hasattr(self.active_scene, 'on_resume'):
+            self.active_scene.on_resume()
         
         print("📚 Scène dépilée")
         return True
+    
+    def update(self, dt):
+        """Met à jour la scène active"""
+        if self.active_scene:
+            self.active_scene.update(dt)
+            
+            # NOTE: Transitions automatiques désactivées - gérées par GameEngine
+            # if hasattr(self.active_scene, 'get_next_scene'):
+            #     next_scene = self.active_scene.get_next_scene()
+            #     if next_scene:
+            #         self.handle_scene_transition(next_scene)
+    
+    def handle_scene_transition(self, transition_type):
+        """Gère les transitions automatiques entre scènes"""
+        if transition_type == "game":
+            from ..scenes.game_scene import GameScene
+            game_scene = GameScene()
+            self.add_scene("game", game_scene)
+            self.set_active_scene("game")
+        elif transition_type == "settings":
+            from ..ui.scenes.settings_menu import SettingsMenuScene
+            settings_scene = SettingsMenuScene()
+            # Passer le système audio si disponible
+            if hasattr(self.active_scene, 'sound_system'):
+                settings_scene.set_sound_system(self.active_scene.sound_system)
+            self.add_scene("settings", settings_scene)
+            self.push_scene("settings")
+        elif transition_type == "back":
+            self.pop_scene()
+        elif transition_type == "quit":
+            import pygame
+            pygame.quit()
+            exit()
+    
+    def render(self, screen):
+        """Dessine la scène active"""
+        if self.active_scene:
+            if hasattr(self.active_scene, 'render'):
+                self.active_scene.render(screen)
+            elif hasattr(self.active_scene, 'draw'):
+                self.active_scene.draw(screen)
     
     def go_back(self):
         """Retourne à la scène précédente"""

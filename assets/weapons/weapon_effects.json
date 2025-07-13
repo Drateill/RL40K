@@ -1,0 +1,239 @@
+{
+  "projectile_effects": {
+    "piercing": {
+      "name": "Perforant",
+      "description": "Traverse les ennemis",
+      "type": "projectile_modifier",
+      "parameters": {
+        "pierce_count": 3,
+        "damage_reduction_per_hit": 0.1
+      }
+    },
+    "explosive": {
+      "name": "Explosif",
+      "description": "Explose au contact",
+      "type": "impact_effect",
+      "parameters": {
+        "explosion_radius": 50,
+        "explosion_damage": 0.5,
+        "knockback": 20
+      }
+    },
+    "homing": {
+      "name": "Autoguidé",
+      "description": "Suit les ennemis",
+      "type": "movement_modifier",
+      "parameters": {
+        "tracking_range": 150,
+        "turn_rate": 0.15,
+        "target_priority": "closest"
+      }
+    },
+    "multi_shot_2": {
+      "name": "Tir Double",
+      "description": "Tire 2 projectiles",
+      "type": "firing_modifier",
+      "parameters": {
+        "projectile_count": 2,
+        "spread_angle": 0.3
+      }
+    },
+    "multi_shot_3": {
+      "name": "Tir Triple",
+      "description": "Tire 3 projectiles",
+      "type": "firing_modifier",
+      "parameters": {
+        "projectile_count": 3,
+        "spread_angle": 0.5
+      }
+    }
+  },
+
+  "damage_effects": {
+    "holy_damage": {
+      "name": "Dégâts Sacrés",
+      "description": "Efficace contre les démons",
+      "type": "damage_modifier",
+      "parameters": {
+        "damage_multiplier_vs_demon": 2.0,
+        "damage_multiplier_vs_chaos": 1.5,
+        "visual_effect": "holy_glow"
+      }
+    },
+    "chaos_corruption": {
+      "name": "Corruption Chaotique",
+      "description": "Corrompt les cibles",
+      "type": "damage_modifier",
+      "parameters": {
+        "corruption_chance": 0.3,
+        "corruption_amount": 5,
+        "damage_over_time": 2
+      }
+    },
+    "energy_damage": {
+      "name": "Dégâts Énergétiques",
+      "description": "Ignore une partie de l'armure",
+      "type": "damage_modifier",
+      "parameters": {
+        "armor_penetration": 0.5,
+        "shield_bonus_damage": 1.5
+      }
+    },
+    "thermal_damage": {
+      "name": "Dégâts Thermiques",
+      "description": "Fait fondre l'armure",
+      "type": "damage_modifier",
+      "parameters": {
+        "armor_melting": true,
+        "damage_over_time": 3,
+        "duration": 60
+      }
+    }
+  },
+
+  "special_effects": {
+    "rapid_fire": {
+      "name": "Tir Rapide",
+      "description": "Cadence accrue après le premier tir",
+      "type": "firing_modifier",
+      "parameters": {
+        "fire_rate_buildup": 0.8,
+        "max_buildup": 0.5,
+        "buildup_decay": 0.95
+      }
+    },
+    "overcharge_risk": {
+      "name": "Risque de Surchauffe",
+      "description": "Peut exploser si trop utilisé",
+      "type": "weapon_modifier",
+      "parameters": {
+        "overheat_chance": 0.05,
+        "overheat_damage": 10,
+        "cooldown_time": 120
+      }
+    },
+    "life_steal": {
+      "name": "Vol de Vie",
+      "description": "Récupère des PV en tuant",
+      "type": "on_kill_effect",
+      "parameters": {
+        "heal_percentage": 0.2,
+        "max_heal": 15
+      }
+    },
+    "suppression": {
+      "name": "Suppression",
+      "description": "Ralentit les ennemis touchés",
+      "type": "debuff_effect",
+      "parameters": {
+        "speed_reduction": 0.3,
+        "duration": 90,
+        "stack_limit": 3
+      }
+    },
+    "precision_shot": {
+      "name": "Tir de Précision",
+      "description": "Augmente les chances de critique",
+      "type": "damage_modifier",
+      "parameters": {
+        "critical_chance": 0.25,
+        "critical_multiplier": 2.0,
+        "headshot_bonus": 1.5
+      }
+    },
+    "burning_damage": {
+      "name": "Dégâts de Brûlure",
+      "description": "Inflige des dégâts sur la durée",
+      "type": "damage_modifier",
+      "parameters": {
+        "burn_damage": 5,
+        "burn_duration": 180,
+        "spread_chance": 0.3
+      }
+    }
+  },
+
+  "area_effects": {
+    "flame_stream": {
+      "name": "Jet de Flammes",
+      "description": "Crée un cône de flammes",
+      "type": "area_modifier",
+      "parameters": {
+        "cone_angle": 45,
+        "range": 80,
+        "damage_falloff": 0.7
+      }
+    },
+    "warp_explosion": {
+      "name": "Explosion Warp",
+      "description": "Déchire la réalité",
+      "type": "area_effect",
+      "parameters": {
+        "explosion_radius": 80,
+        "reality_distortion": true,
+        "chaos_spread": 0.4
+      }
+    },
+    "purifying_flame": {
+      "name": "Flamme Purificatrice",
+      "description": "Purifie la corruption",
+      "type": "area_effect",
+      "parameters": {
+        "purification_radius": 60,
+        "corruption_cleanse": 10,
+        "heal_allies": 5
+      }
+    },
+    "melee_attack": {
+      "name": "Attaque de Mêlée",
+      "description": "Attaque en cône devant le joueur",
+      "type": "area_effect",
+      "parameters": {
+        "cone_angle": 60,
+        "range": 60,
+        "knockback": 30
+      }
+    },
+    "cleave_attack": {
+      "name": "Attaque Fendante",
+      "description": "Frappe plusieurs ennemis",
+      "type": "area_effect",
+      "parameters": {
+        "max_targets": 3,
+        "damage_falloff": 0.8
+      }
+    },
+    "armor_rending": {
+      "name": "Déchirement d'Armure",
+      "description": "Ignore une partie de l'armure",
+      "type": "damage_modifier",
+      "parameters": {
+        "armor_penetration": 0.7,
+        "armor_reduction": 0.2
+      }
+    }
+  },
+
+  "visual_effects": {
+    "holy_glow": {
+      "color": [255, 255, 200],
+      "aura_size": 3,
+      "animation": "pulsing"
+    },
+    "chaos_flicker": {
+      "color": [255, 100, 255],
+      "aura_size": 2,
+      "animation": "chaotic"
+    },
+    "energy_trail": {
+      "color": [0, 255, 255],
+      "trail_length": 8,
+      "animation": "sparking"
+    },
+    "flame_particle": {
+      "color": [255, 150, 0],
+      "particle_count": 5,
+      "animation": "flickering"
+    }
+  }
+}

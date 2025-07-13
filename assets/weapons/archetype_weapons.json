@@ -1,0 +1,103 @@
+{
+  "flamer_archetype": {
+    "name": "Lance-Flammes Militaire",
+    "description": "Arme incendiaire spécialisée pour l'archétype Pyromancien",
+    "type": "flame",
+    "rarity": "archetype",
+    "stats": {
+      "damage": 18,
+      "fire_rate": 3,
+      "projectile_speed": 5,
+      "accuracy": 1.0,
+      "reload_time": 120,
+      "ammo_capacity": 25,
+      "range": 180
+    },
+    "projectile": {
+      "size": 14,
+      "color": [255, 120, 0],
+      "sprite": null,
+      "trail": false,
+      "lifetime": 35
+    },
+    "effects": [
+      "flame_stream",
+      "burning_damage",
+      "area_effect"
+    ],
+    "sounds": {
+      "fire": "heavy_flamer.wav",
+      "reload": "flamer_reload.wav",
+      "empty": "weapon_empty.wav"
+    },
+    "upgrades": [],
+    "archetype_exclusive": true
+  },
+  "laser_pistol_archetype": {
+    "name": "Pistolet Laser Militaire",
+    "description": "Arme énergétique de précision pour l'archétype Tireur d'Élite",
+    "type": "energy",
+    "rarity": "archetype",
+    "stats": {
+      "damage": 22,
+      "fire_rate": 12,
+      "projectile_speed": 18,
+      "accuracy": 0.98,
+      "reload_time": 60,
+      "ammo_capacity": 12,
+      "range": 900
+    },
+    "projectile": {
+      "size": 4,
+      "color": [255, 50, 50],
+      "sprite": null,
+      "trail": true,
+      "lifetime": 150
+    },
+    "effects": [
+      "energy_damage",
+      "precision_shot"
+    ],
+    "sounds": {
+      "fire": "laser_pistol.wav",
+      "reload": "energy_reload.wav",
+      "empty": "energy_empty.wav"
+    },
+    "upgrades": [],
+    "archetype_exclusive": true
+  },
+  "chainsword_archetype": {
+    "name": "Épée Tronçonneuse",
+    "description": "Arme de corps à corps brutale pour l'archétype Assaut",
+    "type": "melee",
+    "rarity": "archetype",
+    "stats": {
+      "damage": 35,
+      "fire_rate": 8,
+      "projectile_speed": 0,
+      "accuracy": 1.0,
+      "reload_time": 0,
+      "ammo_capacity": -1,
+      "range": 60
+    },
+    "projectile": {
+      "size": 20,
+      "color": [200, 200, 200],
+      "sprite": null,
+      "trail": false,
+      "lifetime": 15
+    },
+    "effects": [
+      "melee_attack",
+      "armor_rending",
+      "cleave_attack"
+    ],
+    "sounds": {
+      "fire": "chainsword_rev.wav",
+      "reload": null,
+      "empty": null
+    },
+    "upgrades": [],
+    "archetype_exclusive": true
+  }
+}

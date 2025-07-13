@@ -16,6 +16,12 @@ class CollisionSystem:
             "player_item": 0,
             "total_checks": 0
         }
+        
+        # Références pour les systèmes externes
+        self.exp_system = None
+        self.sound_system = None
+        self.morality_system = None
+        self.game_scene = None
     
     
     def update(self, entity_manager):
@@ -51,25 +57,98 @@ class CollisionSystem:
                 continue
             
             for enemy in enemies:
+                # Utiliser les attributs radius si disponibles
+                projectile_radius = getattr(projectile, 'radius', 3)
+                enemy_radius = getattr(enemy, 'width', 20) // 2
+                
+                # Calculer les positions centrées pour les ennemis
+                enemy_center_x = enemy.x + enemy_radius
+                enemy_center_y = enemy.y + enemy_radius
+                
+                distance = ((projectile.x - enemy_center_x)**2 + (projectile.y - enemy_center_y)**2)**0.5
+                collision_distance = projectile_radius + enemy_radius
+                
+                # Debug collision occasionnel 
+                if distance < collision_distance + 10:  # Zone élargie pour debug
+                    print(f"🔍 Proche collision: projectile({projectile.x:.1f},{projectile.y:.1f}) vs ennemi({enemy_center_x:.1f},{enemy_center_y:.1f})")
+                    print(f"   Distance: {distance:.1f}, Collision si <= {collision_distance}")
+                
                 if self.circle_collision(
-                    projectile.x, projectile.y, 3,  # Rayon projectile
-                    enemy.x, enemy.y, 10  # Rayon ennemi
+                    projectile.x, projectile.y, projectile_radius,
+                    enemy_center_x, enemy_center_y, enemy_radius
                 ):
-                    # Appliquer dégâts
-                    if hasattr(enemy, 'take_damage'):
-                        damage = getattr(projectile, 'damage', 20)
-                        enemy.take_damage(damage)
-                    elif hasattr(enemy, 'health'):
-                        enemy.health -= getattr(projectile, 'damage', 20)
+                    # Traitement différencié selon le type de projectile
+                    should_remove_projectile = True
                     
-                    # Marquer le projectile pour suppression
-                    if projectile not in projectiles_to_remove:
+                    if hasattr(projectile, 'hit_enemy'):
+                        # Nouveau système: WeaponProjectile avec logique de percement
+                        print(f"🚀 WeaponProjectile collision - Perforant: {getattr(projectile, 'piercing', False)}")
+                        should_remove_projectile = projectile.hit_enemy(enemy, self.game_scene)
+                        print(f"🎯 Projectile {'' if should_remove_projectile else 'NOT '}marked for removal")
+                    else:
+                        # Ancien système: Bullet legacy
+                        damage = getattr(projectile, 'damage', 20)
+                        print(f"💥 Legacy Bullet collision ! Dégâts: {damage}")
+                        
+                        if hasattr(enemy, 'take_damage'):
+                            print(f"🎯 Ennemi health avant: {getattr(enemy, 'health', '?')}")
+                            enemy.take_damage(damage)
+                            print(f"🎯 Ennemi health après: {getattr(enemy, 'health', '?')}")
+                        elif hasattr(enemy, 'health'):
+                            print(f"🎯 Ennemi health avant: {enemy.health}")
+                            enemy.health -= damage
+                            print(f"🎯 Ennemi health après: {enemy.health}")
+                    
+                    # Marquer le projectile pour suppression seulement si nécessaire
+                    if should_remove_projectile and projectile not in projectiles_to_remove:
                         projectiles_to_remove.append(projectile)
                     
-                    # Si l'ennemi est mort, le marquer pour suppression
+                    # Si l'ennemi est mort, le marquer pour suppression ET donner XP
                     if hasattr(enemy, 'health') and enemy.health <= 0:
                         if enemy not in enemies_to_remove:
                             enemies_to_remove.append(enemy)
+                            
+                            # 🎯 DONNER XP ICI au lieu de dans GameScene
+                            print(f"💀 Ennemi mort par collision ! Donner XP...")
+                            if self.exp_system and hasattr(self.exp_system, 'add_experience'):
+                                old_level = getattr(self.exp_system, 'level', 0)
+                                old_exp = getattr(self.exp_system, 'experience', 0)
+                                print(f"🎯 Avant XP: Level {old_level}, XP {old_exp}")
+                                
+                                self.exp_system.add_experience(10)
+                                
+                                new_level = getattr(self.exp_system, 'level', 0)
+                                new_exp = getattr(self.exp_system, 'experience', 0)
+                                print(f"🎯 Après XP: Level {new_level}, XP {new_exp}")
+                                
+                                # Notification XP
+                                if self.game_scene and hasattr(self.game_scene, 'add_floating_text'):
+                                    self.game_scene.add_floating_text(enemy.x, enemy.y, "+10 XP", (0, 255, 255))
+                                
+                                # Level up notification
+                                if new_level > old_level:
+                                    print(f"🎉 LEVEL UP ! {old_level} -> {new_level}")
+                                    if self.sound_system and hasattr(self.sound_system, 'on_level_up'):
+                                        self.sound_system.on_level_up()
+                                    if self.game_scene and hasattr(self.game_scene, 'add_floating_text'):
+                                        player = entity_manager.get_player()
+                                        if player:
+                                            self.game_scene.add_floating_text(player.x, player.y - 30, "LEVEL UP!", (255, 215, 0))
+                            
+                            # Son de mort
+                            if self.sound_system and hasattr(self.sound_system, 'on_enemy_death'):
+                                player = entity_manager.get_player()
+                                if player:
+                                    self.sound_system.on_enemy_death((enemy.x, enemy.y), (player.x, player.y), enemy.__class__.__name__)
+                            
+                            # Moralité
+                            if self.morality_system and hasattr(self.morality_system, 'process_kill'):
+                                self.morality_system.process_kill(enemy.__class__.__name__)
+                            
+                            # Mettre à jour les compteurs de GameScene
+                            if self.game_scene:
+                                self.game_scene.enemies_killed += 1
+                                self.game_scene.enemies_remaining -= 1
                     
                     self.collision_stats["projectile_enemy"] += 1
                     break  # Un projectile ne peut toucher qu'un ennemi
@@ -115,9 +194,13 @@ class CollisionSystem:
             return
         
         for enemy in enemies:
+            # Utiliser les vraies dimensions du joueur et de l'ennemi
+            player_radius = getattr(player, 'width', 32) // 2
+            enemy_radius = getattr(enemy, 'width', 20) // 2
+            
             if self.circle_collision(
-                player.x, player.y, 12,  # Rayon joueur
-                enemy.x, enemy.y, 10   # Rayon ennemi
+                player.x + player_radius, player.y + player_radius, player_radius,
+                enemy.x + enemy_radius, enemy.y + enemy_radius, enemy_radius
             ):
                 # Appliquer dégâts au joueur
                 if hasattr(player, 'take_damage'):
